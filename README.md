@@ -6,8 +6,7 @@
 
 - `uv` 或 Python3.12
 - Node.js 20+
-- PostgreSQL 14+
-- 建议安装 `pgvector`
+- PostgreSQL 14+插件 `pgvector`
 
 ## 安装
 
