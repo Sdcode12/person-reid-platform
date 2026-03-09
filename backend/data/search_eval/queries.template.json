@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "name": "search-baseline-template",
+  "defaults": {
+    "top_k": 10,
+    "face_mode": "assist",
+    "group_by_target": true,
+    "diverse_camera": true
+  },
+  "cases": [
+    {
+      "id": "case_001",
+      "notes": "query from DB by meta_id",
+      "query": {
+        "meta_id": 1
+      },
+      "filters": {
+        "time_start": "2026-03-01T00:00:00+08:00",
+        "time_end": "2026-03-06T23:59:59+08:00",
+        "camera_id": "camera_01",
+        "image_mode": "color",
+        "upper_color": "gray",
+        "lower_color": "black",
+        "has_hat": false,
+        "pose_hint": "front_or_back",
+        "min_quality_score": 0.25
+      },
+      "expected": {
+        "target_keys": [
+          "replace_with_real_target_key"
+        ],
+        "track_ids": [
+          1
+        ]
+      },
+      "top_k": 10
+    },
+    {
+      "id": "case_002",
+      "notes": "query from DB by image_path",
+      "query": {
+        "image_path": "db://replace/with_real_image_path.jpg"
+      },
+      "filters": {
+        "time_start": "2026-03-01T00:00:00+08:00",
+        "time_end": "2026-03-06T23:59:59+08:00"
+      },
+      "expected": {
+        "target_keys": [
+          "replace_with_real_target_key"
+        ]
+      }
+    },
+    {
+      "id": "case_003",
+      "notes": "query from local file relative to this dataset file",
+      "query": {
+        "file": "sample_queries/query_003.jpg"
+      },
+      "filters": {},
+      "expected": {
+        "track_ids": [
+          3
+        ]
+      }
+    }
+  ]
+}

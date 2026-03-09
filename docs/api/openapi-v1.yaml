@@ -1,0 +1,524 @@
+openapi: 3.1.0
+info:
+  title: Person ReID Platform API
+  version: 1.0.0
+  description: Unified v1 API contract for Web and Mobile clients.
+servers:
+  - url: http://localhost:8002
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+  /api/v1/status:
+    get:
+      tags: [System]
+      responses:
+        '200':
+          description: Service health summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+  /api/v1/search:
+    post:
+      tags: [Search]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+  /api/v1/search/{query_id}/feedback:
+    post:
+      tags: [Search]
+      parameters:
+        - in: path
+          name: query_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [track_id, verdict]
+              properties:
+                track_id:
+                  type: integer
+                verdict:
+                  type: string
+                  enum: [hit, miss]
+                note:
+                  type: string
+      responses:
+        '200':
+          description: Feedback accepted
+  /api/v1/alerts:
+    get:
+      tags: [Alerts]
+      responses:
+        '200':
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertItem'
+  /api/v1/cameras:
+    get:
+      tags: [Cameras]
+      responses:
+        '200':
+          description: Camera status list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CameraStatusItem'
+  /api/v1/cameras/{camera_id}/test:
+    post:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Camera connectivity test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraTestResult'
+  /api/v1/cameras/{camera_id}/recognize:
+    get:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: apply_roi
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Person recognition result on latest frame
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraRecognitionResult'
+  /api/v1/cameras/{camera_id}/snapshot:
+    get:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: draw_boxes
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - in: query
+          name: apply_roi
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: JPEG snapshot from latest frame
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+  /api/v1/cameras/{camera_id}/roi:
+    get:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current ROI configuration of camera
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraRoiConfigResponse'
+    put:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CameraRoiConfigRequest'
+      responses:
+        '200':
+          description: ROI configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraRoiConfigResponse'
+  /api/v1/cameras/{camera_id}/roi/test:
+    get:
+      tags: [Cameras]
+      parameters:
+        - in: path
+          name: camera_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ROI filter result on latest frame
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraRoiTestResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AuthToken:
+      type: object
+      required: [access_token, token_type, role]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+        role:
+          type: string
+          enum: [admin, operator, auditor]
+    SystemStatus:
+      type: object
+      properties:
+        service:
+          type: string
+        db:
+          type: string
+        ingestion:
+          type: string
+        time:
+          type: string
+          format: date-time
+    SearchRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+          format: binary
+        upper_color:
+          type: string
+        lower_color:
+          type: string
+        time_start:
+          type: string
+          format: date-time
+        time_end:
+          type: string
+          format: date-time
+        gender:
+          type: string
+          enum: [male, female]
+        has_hat:
+          type: boolean
+        has_backpack:
+          type: boolean
+        is_cycling:
+          type: boolean
+        sleeve_length:
+          type: string
+          enum: [long, short]
+        top_k:
+          type: integer
+          default: 10
+          maximum: 100
+    SearchResponse:
+      type: object
+      properties:
+        query_id:
+          type: string
+        count:
+          type: integer
+        elapsed_ms:
+          type: integer
+        funnel:
+          type: object
+          properties:
+            layer1_count:
+              type: integer
+            layer2_count:
+              type: integer
+            layer3_count:
+              type: integer
+        metrics:
+          type: object
+          properties:
+            candidate_reduction_rate:
+              type: number
+            recall_at_10:
+              type: number
+            fpr:
+              type: number
+            p95_latency_ms:
+              type: number
+        timeline:
+          type: object
+          additionalProperties:
+            type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResultItem'
+    SearchResultItem:
+      type: object
+      properties:
+        track_id:
+          type: integer
+        similarity:
+          type: number
+        body_sim:
+          type: number
+        attr_score:
+          type: number
+        spacetime_score:
+          type: number
+        camera_id:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        upper_color:
+          type: string
+        lower_color:
+          type: string
+    AlertItem:
+      type: object
+      properties:
+        id:
+          type: string
+        level:
+          type: string
+          enum: [info, warning, error]
+        source:
+          type: string
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CameraStatusItem:
+      type: object
+      properties:
+        camera_id:
+          type: string
+        camera_name:
+          type: string
+        online:
+          type: boolean
+        last_frame_time:
+          type: string
+          format: date-time
+          nullable: true
+        frames_read:
+          type: integer
+        failures:
+          type: integer
+    CameraTestResult:
+      type: object
+      properties:
+        camera_id:
+          type: string
+        ok:
+          type: boolean
+        reason:
+          type: string
+        last_frame_time:
+          type: string
+          format: date-time
+          nullable: true
+    CameraRecognitionResult:
+      type: object
+      properties:
+        camera_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        people_count:
+          type: integer
+        raw_people_count:
+          type: integer
+        dropped_count:
+          type: integer
+        persisted_count:
+          type: integer
+        roi_applied:
+          type: boolean
+        include_polygon_count:
+          type: integer
+        exclude_polygon_count:
+          type: integer
+        detections:
+          type: array
+          items:
+            type: object
+            properties:
+              bbox:
+                type: array
+                items:
+                  type: integer
+              confidence:
+                type: number
+        error:
+          type: string
+          nullable: true
+    RoiPoint:
+      type: object
+      required: [x, y]
+      properties:
+        x:
+          type: number
+          minimum: 0
+          maximum: 1
+        y:
+          type: number
+          minimum: 0
+          maximum: 1
+    RoiPolygon:
+      type: object
+      required: [points]
+      properties:
+        points:
+          type: array
+          minItems: 3
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/RoiPoint'
+    CameraRoiConfigRequest:
+      type: object
+      properties:
+        include:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/RoiPolygon'
+        exclude:
+          type: array
+          maxItems: 32
+          items:
+            $ref: '#/components/schemas/RoiPolygon'
+    CameraRoiConfigResponse:
+      type: object
+      required: [camera_id, include, exclude, updated_by]
+      properties:
+        camera_id:
+          type: string
+        include:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoiPolygon'
+        exclude:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoiPolygon'
+        updated_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+    CameraRoiTestResponse:
+      type: object
+      required:
+        - camera_id
+        - timestamp
+        - raw_people_count
+        - filtered_people_count
+        - dropped_count
+        - include_polygon_count
+        - exclude_polygon_count
+      properties:
+        camera_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        raw_people_count:
+          type: integer
+        filtered_people_count:
+          type: integer
+        dropped_count:
+          type: integer
+        include_polygon_count:
+          type: integer
+        exclude_polygon_count:
+          type: integer

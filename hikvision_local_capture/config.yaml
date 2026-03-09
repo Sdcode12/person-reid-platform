@@ -1,0 +1,76 @@
+camera:
+  name: hik_demo
+  host: <camera-host>
+  port: 80
+  scheme: http
+  username: <camera-user>
+  password: <camera-password>
+  channel_id: 1
+  stream_path: /ISAPI/Event/notification/alertStream
+  picture_path_template: /ISAPI/Streaming/channels/{channel_no}/picture
+  request_timeout_seconds: 10
+  snapshot_retry_count: 2
+  snapshot_retry_delay_ms: 120
+  cooldown_seconds: 2
+  burst_count: 4
+  max_capture_attempts: 36
+  burst_interval_ms: 180
+
+detector:
+  mode: auto
+  yolo_model_path: models/yolov8n.onnx
+  yolo_input_size: 640
+  confidence_threshold: 0.2
+  nms_threshold: 0.45
+  reid_mode: auto
+  reid_model_path: backend/models/person_reid.onnx
+  reid_input_width: 128
+  reid_input_height: 256
+  hog_hit_threshold: 0.0
+  min_person_confidence: 0.2
+  min_person_area_ratio: 0.006
+  enable_tiled_detection: true
+  tiled_detection_grid_size: 2
+  tiled_detection_overlap_ratio: 0.25
+  tiled_detection_trigger_area_ratio: 0.03
+  enable_bbox_stabilization: true
+  bbox_stabilize_alpha: 0.72
+  bbox_stabilize_iou_threshold: 0.18
+  bbox_stabilize_center_distance_ratio: 0.22
+  enable_rider_rescue: true
+  rider_rescue_confidence: 0.1
+  rider_rescue_area_ratio: 0.002
+
+quality:
+  min_laplacian_var: 50
+  min_brightness: 25
+  max_brightness: 230
+  min_contrast_std: 14
+
+dedup:
+  hamming_threshold: 5
+
+reliability:
+  min_consecutive_vmd_active: 2
+  active_window_seconds: 3
+  same_target_suppress_seconds: 120
+  same_target_embedding_similarity: 0.94
+  same_target_hash_hamming_threshold: 4
+  same_target_area_ratio_delta: 0.08
+
+color:
+  enable_normalization: true
+  target_brightness: 128
+  night_brightness_threshold: 70
+
+output:
+  dir: photos
+  save_to_db: true
+  save_local_image: false
+  local_fallback_on_db_error: true
+  save_sidecar_json: false
+  save_metadata_jsonl: false
+  metadata_jsonl_name: metadata.jsonl
+
+logging:
+  verbose_events: false

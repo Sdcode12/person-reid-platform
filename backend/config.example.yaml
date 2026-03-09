@@ -1,0 +1,56 @@
+app:
+  name: person-reid-platform
+  env: dev
+  setup_completed: false
+  host: 0.0.0.0
+  port: 8002
+  cors_allow_origins:
+    - http://127.0.0.1:5173
+    - http://localhost:5173
+
+cameras:
+  - id: camera_01
+    name: 路口东
+    rtsp_url: rtsp://<camera-user>:<camera-password>@<camera-host>:554/stream1
+    enabled: true
+
+stream:
+  reconnect_interval: 10
+  buffer_size: 1
+
+ingestion:
+  interval_seconds: 1
+
+detector:
+  mode: auto
+  confidence_threshold: 0.35
+  nms_threshold: 0.45
+  hog_hit_threshold: 0.0
+  persist_tracks: true
+  yolo_model_path: models/yolov8n.onnx
+  yolo_input_size: 640
+  person_class_ids: [0]
+
+storage:
+  snapshot_dir: snapshots
+
+security:
+  jwt_secret: change-me
+  jwt_algorithm: HS256
+  token_expire_minutes: 480
+  auth_mode: db_only
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  dbname: camera_reid
+  user: postgres
+  password: ""
+  minconn: 1
+  maxconn: 5
+
+metrics:
+  default_candidate_reduction_rate: 0.90
+  default_recall_at_10: 0.85
+  default_fpr: 0.15
+  default_p95_latency_ms: 500

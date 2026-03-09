@@ -1,0 +1,93 @@
+# CameraCodex Public Bundle
+
+这个目录是面向 GitHub 公开仓库整理出的可发布版本，只保留运行所需的源码、模型、脚本和示例配置，不包含本地依赖、运行日志、私有配置和本地抓拍数据。
+
+## 包含内容
+
+- `backend/` FastAPI 后端源码、数据库迁移、模型文件、脚本、示例配置
+- `web/` React 管理台源码和前端构建配置
+- `hikvision_local_capture/` 海康抓拍脚本与示例配置
+- `scripts/dev_stack.sh` 本地开发启动脚本
+- `docs/` 保留的接口/权限/采集说明
+
+## 故意不包含
+
+- `backend/config.yaml`
+- `backend/.venv/`
+- `web/node_modules/`
+- `web/dist/`
+- `.run/`
+- `__pycache__/`
+- 本地抓拍图片、metadata、运行日志
+
+## 环境要求
+
+- Python 3.12
+- `uv`
+- Node.js 20+
+- PostgreSQL 14+
+- 建议安装 `pgvector`
+
+## 安装
+
+### 后端
+
+```bash
+cd backend
+uv venv
+UV_CACHE_DIR=/tmp/uv-cache uv pip install --python .venv/bin/python -r requirements.txt
+```
+
+### 前端
+
+```bash
+cd web
+npm install
+```
+
+## 首次运行
+
+回到项目根目录执行：
+
+```bash
+./scripts/dev_stack.sh start
+```
+
+然后访问：
+
+```text
+http://127.0.0.1:5173
+```
+
+如果系统尚未初始化，会自动进入 `/setup` 页面。  
+在页面里填写数据库连接并创建首个管理员账号。
+
+## 本地开发常用命令
+
+```bash
+./scripts/dev_stack.sh start
+./scripts/dev_stack.sh status
+./scripts/dev_stack.sh logs
+./scripts/dev_stack.sh stop
+./scripts/dev_stack.sh reconfigure
+```
+
+## 部署说明
+
+- 后端默认监听 `8002`
+- 前端开发默认监听 `5173`
+- 生产环境前端可执行：
+
+```bash
+cd web
+npm run build
+```
+
+- 构建产物位于 `web/dist`
+- 可用 `Nginx` 或 `Caddy` 托管前端静态文件，并将 API 反代到 `127.0.0.1:8002`
+
+## 发布前提醒
+
+- `backend/config.example.yaml` 是示例，不要改成真实私有配置后再提交
+- 摄像头和数据库真实密码应通过 `/setup` 或本地部署环境注入
+- 运行后生成的 `.run/`、`backend/config.yaml`、本地抓拍图片都不应提交
