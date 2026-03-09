@@ -3,8 +3,8 @@
 
 ## 环境要求
 
-- Python 3.12
-- `uv`
+
+- `uv` 或 Python3.12
 - Node.js 20+
 - PostgreSQL 14+
 - 建议安装 `pgvector`
