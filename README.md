@@ -1,24 +1,5 @@
 # CameraCodex Public Bundle
 
-这个目录是面向 GitHub 公开仓库整理出的可发布版本，只保留运行所需的源码、模型、脚本和示例配置，不包含本地依赖、运行日志、私有配置和本地抓拍数据。
-
-## 包含内容
-
-- `backend/` FastAPI 后端源码、数据库迁移、模型文件、脚本、示例配置
-- `web/` React 管理台源码和前端构建配置
-- `hikvision_local_capture/` 海康抓拍脚本与示例配置
-- `scripts/dev_stack.sh` 本地开发启动脚本
-- `docs/` 保留的接口/权限/采集说明
-
-## 故意不包含
-
-- `backend/config.yaml`
-- `backend/.venv/`
-- `web/node_modules/`
-- `web/dist/`
-- `.run/`
-- `__pycache__/`
-- 本地抓拍图片、metadata、运行日志
 
 ## 环境要求
 
