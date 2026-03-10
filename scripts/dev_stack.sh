@@ -7,6 +7,10 @@ BACKEND_PID_FILE="$RUN_DIR/backend.pid"
 BACKEND_LOG_FILE="$RUN_DIR/backend.log"
 WEB_PID_FILE="$RUN_DIR/web.pid"
 WEB_LOG_FILE="$RUN_DIR/web.log"
+BACKEND_PORT=8002
+WEB_PORT=5173
+BACKEND_PATTERN="$ROOT_DIR/backend/.venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port $BACKEND_PORT"
+WEB_PATTERN="$ROOT_DIR/web/node_modules/.bin/vite --host 0.0.0.0 --port $WEB_PORT"
 CAPTURE_STATE_FILE="$ROOT_DIR/backend/data/capture_runtime_state.json"
 CONFIG_FILE="$ROOT_DIR/backend/config.yaml"
 METADATA_FILE="$ROOT_DIR/hikvision_local_capture/photos/metadata.jsonl"
@@ -32,6 +36,10 @@ disable_capture_autostart_state() {
   printf '{"desired_running": false, "desired_camera_ids": [], "updated_at": "%s"}\n' "$ts" >"$CAPTURE_STATE_FILE"
 }
 
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
 is_running() {
   local pid_file="$1"
   if [[ ! -f "$pid_file" ]]; then
@@ -48,6 +56,78 @@ is_running() {
   return 1
 }
 
+list_child_pids() {
+  local parent_pid="$1"
+  local child
+  if ! command_exists pgrep; then
+    return 0
+  fi
+  for child in ${(f)"$(pgrep -P "$parent_pid" 2>/dev/null || true)"}; do
+    [[ -n "$child" ]] || continue
+    echo "$child"
+    list_child_pids "$child"
+  done
+}
+
+list_matching_pids() {
+  local pattern="$1"
+  if ! command_exists pgrep; then
+    return 0
+  fi
+  pgrep -f "$pattern" 2>/dev/null | awk 'NF && !seen[$0]++'
+}
+
+list_listening_pids() {
+  local port="$1"
+  if command_exists lsof; then
+    lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NF && !seen[$0]++'
+    return 0
+  fi
+  if command_exists netstat; then
+    netstat -ltnp 2>/dev/null | awk -v port=":$port" '$4 ~ port && $6 == "LISTEN" { split($7, a, "/"); if (a[1] ~ /^[0-9]+$/) print a[1] }' | awk 'NF && !seen[$0]++'
+  fi
+}
+
+terminate_pid_tree() {
+  local pid="$1"
+  local name="$2"
+  local targets target
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+  targets="$(
+    {
+      echo "$pid"
+      list_child_pids "$pid"
+    } | awk 'NF && !seen[$0]++'
+  )"
+  for target in ${(f)targets}; do
+    kill "$target" 2>/dev/null || true
+  done
+  sleep 1
+  for target in ${(f)targets}; do
+    if kill -0 "$target" 2>/dev/null; then
+      kill -9 "$target" 2>/dev/null || true
+    fi
+  done
+  echo "$name stopped pid=$pid"
+}
+
+stop_orphaned() {
+  local name="$1"
+  local port="$2"
+  local pattern="$3"
+  local pids pid
+  pids="$(list_matching_pids "$pattern")"
+  if [[ -z "$pids" ]]; then
+    pids="$(list_listening_pids "$port")"
+  fi
+  for pid in ${(f)pids}; do
+    [[ -n "$pid" ]] || continue
+    terminate_pid_tree "$pid" "$name (fallback)"
+  done
+}
+
 start_backend() {
   local enable_capture="${1:-yes}"
   if [[ "$enable_capture" == "yes" ]]; then
@@ -59,7 +139,7 @@ start_backend() {
   fi
   (
     cd "$ROOT_DIR/backend"
-    nohup env UV_CACHE_DIR=/tmp/uv-cache uv run --python .venv/bin/python uvicorn app.main:app --reload --host 0.0.0.0 --port 8002 >>"$BACKEND_LOG_FILE" 2>&1 &
+    nohup env UV_CACHE_DIR=/tmp/uv-cache uv run --python .venv/bin/python uvicorn app.main:app --reload --host 0.0.0.0 --port "$BACKEND_PORT" >>"$BACKEND_LOG_FILE" 2>&1 &
     echo $! >"$BACKEND_PID_FILE"
   )
   sleep 1
@@ -95,7 +175,7 @@ start_web() {
   fi
   (
     cd "$ROOT_DIR/web"
-    nohup npm run dev -- --host 0.0.0.0 --port 5173 >>"$WEB_LOG_FILE" 2>&1 &
+    nohup npm run dev -- --host 0.0.0.0 --port "$WEB_PORT" >>"$WEB_LOG_FILE" 2>&1 &
     echo $! >"$WEB_PID_FILE"
   )
   sleep 1
@@ -112,13 +192,8 @@ stop_one() {
   fi
   local pid
   pid="$(cat "$pid_file")"
-  kill "$pid" 2>/dev/null || true
-  sleep 1
-  if kill -0 "$pid" 2>/dev/null; then
-    kill -9 "$pid" 2>/dev/null || true
-  fi
+  terminate_pid_tree "$pid" "$name"
   : >"$pid_file"
-  echo "$name stopped pid=$pid"
 }
 
 status_one() {
@@ -235,11 +310,15 @@ case "$cmd" in
     disable_capture_autostart_state
     stop_one "$WEB_PID_FILE" "web"
     stop_one "$BACKEND_PID_FILE" "backend"
+    stop_orphaned "web" "$WEB_PORT" "$WEB_PATTERN"
+    stop_orphaned "backend" "$BACKEND_PORT" "$BACKEND_PATTERN"
     ;;
   restart)
     disable_capture_autostart_state
     stop_one "$WEB_PID_FILE" "web"
     stop_one "$BACKEND_PID_FILE" "backend"
+    stop_orphaned "web" "$WEB_PORT" "$WEB_PATTERN"
+    stop_orphaned "backend" "$BACKEND_PORT" "$BACKEND_PATTERN"
     start_backend
     start_web
     ;;
@@ -247,6 +326,8 @@ case "$cmd" in
     disable_capture_autostart_state
     stop_one "$WEB_PID_FILE" "web"
     stop_one "$BACKEND_PID_FILE" "backend"
+    stop_orphaned "web" "$WEB_PORT" "$WEB_PATTERN"
+    stop_orphaned "backend" "$BACKEND_PORT" "$BACKEND_PATTERN"
     mark_force_setup
     start_backend no
     start_web
