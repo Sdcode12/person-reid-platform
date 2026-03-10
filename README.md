@@ -9,6 +9,9 @@
 - PostgreSQL 14+插件 `pgvector`
 
 ## 安装
+### 数据库与jwt
+
+jwt与数据库密码不能纯数字，配置文件backend/config.yaml
 
 ### 后端
 
